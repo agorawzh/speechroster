@@ -17,10 +17,21 @@ def speaker_name(value):
 
 
 def enroll(db, name, paths, model_dir):
+    return enroll_many(db, [(name, paths)], model_dir)[0]
+
+
+def enroll_many(db, groups, model_dir):
+    groups = [(speaker_name(name), paths) for name, paths in groups]
     encoder = voiceprint.VoiceEncoder(model_dir)
-    vectors = [encoder.embed(voiceprint.decode_audio(path)) for path in paths]
-    store.enroll(db, name, vectors)
-    return {"person": name, "clips_processed": len(vectors)}
+    entries = []
+    for name, paths in groups:
+        try:
+            vectors = [encoder.embed(voiceprint.decode_audio(path)) for path in paths]
+        except (OSError, ValueError) as error:
+            raise ValueError(f"{name} · {error}") from error
+        entries.append((name, vectors))
+    store.enroll_many(db, entries)
+    return [{"person": name, "clips_processed": len(vectors)} for name, vectors in entries]
 
 
 def match_speakers(audio, segments, profiles, model_dir, threshold, margin):

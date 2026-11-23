@@ -63,11 +63,12 @@ def list_recordings(db):
     return [dict(row) for row in rows]
 
 
-def enroll(db, name, vectors):
+def enroll_many(db, entries):
     with db:
-        db.execute("INSERT OR IGNORE INTO people VALUES (?)", (name,))
-        db.executemany("INSERT OR IGNORE INTO voiceprints VALUES (?, ?)",
-                       [(name, json.dumps(vector, allow_nan=False)) for vector in vectors])
+        for name, vectors in entries:
+            db.execute("INSERT OR IGNORE INTO people VALUES (?)", (name,))
+            db.executemany("INSERT OR IGNORE INTO voiceprints VALUES (?, ?)",
+                           [(name, json.dumps(vector, allow_nan=False)) for vector in vectors])
 
 
 def save_recording(db, job_id, filename, truncated, segments, matches):

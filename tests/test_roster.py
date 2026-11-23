@@ -9,6 +9,17 @@ from speechroster.voiceprint import identify, voice_windows
 
 
 class RosterTests(unittest.TestCase):
+    def test_batch_enrollment_is_atomic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with closing(store.connect(Path(directory) / "test.sqlite3")) as db:
+                with self.assertRaises(ValueError):
+                    store.enroll_many(db, [("Alice", [[1., 0.]]), ("Bea", [[float("nan"), 0.]])])
+                self.assertEqual(store.list_profiles(db), [])
+                store.enroll_many(db, [("Alice", [[1., 0.], [.9, .1]]), ("Bea", [[0., 1.]])])
+                self.assertEqual(store.list_profiles(db), [
+                    {"name": "Alice", "clips": 2}, {"name": "Bea", "clips": 1},
+                ])
+
     def test_open_set_match_and_ambiguous_match(self):
         profiles = {"Alice": [[1., 0.]], "Bea": [[0., 1.]]}
         self.assertEqual(identify([[1., 0.]], profiles, .75, .08), ("Alice", 1.))

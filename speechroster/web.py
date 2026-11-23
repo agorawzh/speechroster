@@ -60,9 +60,25 @@ def create_app(db_path, model_dir, moss_url=workflow.DEFAULT_MOSS_URL):
             return {"profiles": store.list_profiles(db), "recordings": store.list_recordings(db)}
 
     @app.post("/api/enroll", dependencies=[Depends(require_local_form)])
-    def enroll(name: Annotated[str, Form()], audio: Annotated[list[UploadFile], File()]):
+    def enroll(
+        name: Annotated[list[str], Form()],
+        audio: Annotated[list[UploadFile], File()],
+        clip_count: Annotated[list[int] | None, Form()] = None,
+    ):
+        counts = [len(audio)] if clip_count is None and len(name) == 1 else clip_count or []
+        if len(name) != len(counts) or any(count < 1 for count in counts) or sum(counts) != len(audio):
+            raise HTTPException(422, "请给每位说话人填写姓名并上传至少一段录音。")
         with staged_uploads(audio) as paths, closing(store.connect(db_path)) as db:
-            return workflow.enroll(db, workflow.speaker_name(name), paths, model_dir)
+            groups = []
+            offset = 0
+            for person, count in zip(name, counts, strict=True):
+                groups.append((person, paths[offset:offset + count]))
+                offset += count
+            people = workflow.enroll_many(db, groups, model_dir)
+        result = {"people": people}
+        if len(people) == 1:
+            result.update(people[0])
+        return result
 
     @app.post("/api/transcribe", dependencies=[Depends(require_local_form)])
     def transcribe(audio: Annotated[UploadFile, File()]):

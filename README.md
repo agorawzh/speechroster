@@ -35,7 +35,7 @@ source .venv/bin/activate
 speechroster-web
 ```
 
-Open [SpeechRoster](http://127.0.0.1:7861), enter a name, and upload one or more clean clips of the same speaker. Then upload a meeting recording to transcribe and match its speakers. The page displays the transcript and offers SRT export. It uses the same SQLite database as the CLI when launched from the same directory.
+Open [SpeechRoster](http://127.0.0.1:7861). For each speaker, enter a name and select one or more clean clips of that person. Use **添加说话人** to include additional speakers in the same submission. Then upload a meeting recording to transcribe and match its speakers. The page displays the transcript and offers SRT export. It uses the same SQLite database as the CLI when launched from the same directory.
 
 ## Reproducible demo
 
