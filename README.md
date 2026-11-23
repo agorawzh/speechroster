@@ -11,7 +11,7 @@ With Python 3.12 and [uv](https://docs.astral.sh/uv/) installed, run these comma
 ```sh
 uv venv --python 3.12
 source .venv/bin/activate
-uv pip install -e . 'moss-transcribe-diarize[mlx-runtime] @ git+https://github.com/vanch007/mlx-MOSS-Transcribe-Diarize.git@d2546316f76e93947e8d99a17fb88652f8ad6ab2'
+uv pip install -e '.[web]' 'moss-transcribe-diarize[mlx-runtime] @ git+https://github.com/vanch007/mlx-MOSS-Transcribe-Diarize.git@d2546316f76e93947e8d99a17fb88652f8ad6ab2'
 
 hf download vanch007/mlx-MOSS-Transcribe-Diarize-8bit \
   --revision 7210aef739be6b9e068fba9b1d60369ec053655b --local-dir .models/moss
@@ -25,6 +25,17 @@ HF_HUB_OFFLINE=1 mtd-subtitle-web --backend mlx --model .models/moss \
 ```
 
 You can reuse a running local MOSS subtitle server. To reuse an existing Lab260 installation, set `SPEECHROSTER_REDIMNET_DIR` or pass `--redimnet-dir` before the subcommand. The model directory should contain the upstream `asv/` and `weights/` directories, either directly or inside `redimnet2-plus-main/`.
+
+## Local web interface
+
+With MOSS running, start SpeechRoster in a second terminal from the repository root:
+
+```sh
+source .venv/bin/activate
+speechroster-web
+```
+
+Open [SpeechRoster](http://127.0.0.1:7861), enter a name, and upload one or more clean clips of the same speaker. Then upload a meeting recording to transcribe and match its speakers. The page displays the transcript and offers SRT export. It uses the same SQLite database as the CLI when launched from the same directory.
 
 ## Reproducible demo
 

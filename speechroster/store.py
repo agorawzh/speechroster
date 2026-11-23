@@ -50,6 +50,19 @@ def profiles(db):
     return result
 
 
+def list_profiles(db):
+    rows = db.execute("""
+        SELECT person AS name, COUNT(*) AS clips
+        FROM voiceprints GROUP BY person ORDER BY person
+    """)
+    return [dict(row) for row in rows]
+
+
+def list_recordings(db):
+    rows = db.execute("SELECT id, filename FROM recordings ORDER BY rowid DESC")
+    return [dict(row) for row in rows]
+
+
 def enroll(db, name, vectors):
     with db:
         db.execute("INSERT OR IGNORE INTO people VALUES (?)", (name,))

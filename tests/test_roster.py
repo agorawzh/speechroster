@@ -4,7 +4,7 @@ from contextlib import closing
 from pathlib import Path
 
 from speechroster import store
-from speechroster.__main__ import export_srt
+from speechroster.workflow import export_srt
 from speechroster.voiceprint import identify, voice_windows
 
 

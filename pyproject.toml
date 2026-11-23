@@ -20,6 +20,13 @@ dependencies = [
 
 [project.scripts]
 speechroster = "speechroster.__main__:main"
+speechroster-web = "speechroster.web:main"
+
+[project.optional-dependencies]
+web = ["fastapi>=0.115", "python-multipart>=0.0.9", "uvicorn>=0.30"]
 
 [tool.setuptools.packages.find]
 include = ["speechroster*"]
+
+[tool.setuptools.package-data]
+speechroster = ["web.html"]
