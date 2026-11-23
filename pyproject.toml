@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "speechroster"
+version = "0.1.0"
+description = "Offline transcription and cross-recording voiceprint matching"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "av>=14",
+  "hydra-core>=1.3.2,<1.4",
+  "numpy>=1.26,<3",
+  "requests>=2.32,<3",
+  "scipy>=1.12",
+  "torch>=2.11",
+  "torchaudio>=2.11.1",
+]
+
+[project.scripts]
+speechroster = "speechroster.__main__:main"
+speechroster-web = "speechroster.web:main"
+
+[project.optional-dependencies]
+web = ["fastapi>=0.115", "python-multipart>=0.0.9", "uvicorn>=0.30"]
+
+[tool.setuptools.packages.find]
+include = ["speechroster*"]
+
+[tool.setuptools.package-data]
+speechroster = ["web.html"]

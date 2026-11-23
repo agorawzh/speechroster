@@ -1,0 +1,17 @@
+.speechroster/
+.models/
+.venv/
+__pycache__/
+*.egg-info/
+build/
+dist/
+*.sqlite3*
+*.wav
+*.m4a
+*.aiff
+*.flac
+*.mp3
+*.ogg
+*.mp4
+*.safetensors
+*.bin

@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpeechRoster · 声纹转写</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font: 16px/1.55 Inter, "PingFang SC", system-ui, sans-serif;
+      background: #10121a;
+      color: #f0f1f7;
+      --muted: #adb1c5;
+      --line: #34384a;
+      --surface: #1a1d29;
+      --accent: #c0b7ff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 1120px; margin: auto; padding: 2.5rem 1.75rem 4rem; }
+    header, .results-header, .entry-meta {
+      display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap;
+    }
+    header { padding-block: .5rem 1.75rem; border-bottom: 1px solid var(--line); margin-bottom: 2rem; }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -.045em; line-height: 1.1; }
+    h2 { font-size: 1.375rem; letter-spacing: -.02em; line-height: 1.3; }
+    header p { margin-top: .55rem; color: var(--muted); }
+    .local { display: inline-flex; align-items: center; gap: .5rem; font-size: .875rem; color: var(--muted); }
+    .local::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: #87dcb4; }
+    .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    section {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 1rem;
+      padding: 1.5rem; min-width: 0;
+    }
+    form { display: grid; gap: .9rem; margin-top: 1.2rem; }
+    label { display: grid; gap: .35rem; font-size: .9rem; font-weight: 650; }
+    input, select, button, .download { font: inherit; border-radius: .55rem; }
+    input, select {
+      min-width: 0; width: 100%; padding: .65rem .75rem;
+      color: inherit; background: #121420; border: 1px solid var(--line);
+    }
+    input::file-selector-button {
+      font: inherit; background: #2b2d44; color: #efecff;
+      border: 0; border-radius: .35rem; padding: .35rem .65rem; margin-right: .7rem;
+    }
+    input[type=file] { font-size: .875rem; }
+    button, .download {
+      min-height: 2.65rem; padding: .55rem .9rem; border: 1px solid transparent;
+      font-weight: 650; cursor: pointer; text-decoration: none;
+    }
+    button { justify-self: start; background: var(--accent); color: #1c1638; }
+    button:disabled { cursor: wait; opacity: .65; }
+    .secondary { color: var(--accent); background: transparent; border-color: var(--line); }
+    .enroll-actions { display: flex; flex-wrap: wrap; gap: .65rem; }
+    #voice-groups { display: grid; gap: .7rem; }
+    fieldset {
+      display: grid; gap: .75rem; min-width: 0; margin: 0; padding: .8rem;
+      border: 1px solid var(--line); border-radius: .65rem;
+    }
+    legend { padding-inline: .35rem; color: var(--muted); font-size: .875rem; }
+    .remove-group { min-height: 2rem; padding: .25rem .55rem; font-size: .875rem; }
+    .download { border-color: var(--line); color: var(--accent); }
+    :where(input, select, button, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    small, .hint, .status, .empty { color: var(--muted); font-size: .875rem; }
+    .status[data-error=true], #limited { color: #ffc581; }
+    .roster { margin: 1rem 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: .45rem; }
+    .roster li { color: #e2ddff; background: #292640; padding: .25rem .55rem; border-radius: .45rem; overflow-wrap: anywhere; }
+    .results { margin-top: 1rem; }
+    .results select { max-width: 100%; width: auto; font-weight: 400; }
+    .results-header label { flex: 1 1 12rem; min-width: 0; max-width: 22rem; }
+    .results-header a { align-self: end; }
+    #limited, #results-status { margin-top: .8rem; }
+    .transcript { list-style: none; padding: 0; margin: 1rem 0 0; }
+    .entry { padding: .9rem 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+    .entry-meta { justify-content: flex-start; margin-bottom: .35rem; font-size: .875rem; }
+    .entry-meta time { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .entry-meta strong { color: var(--accent); }
+    [hidden] { display: none !important; }
+    @media (max-width: 680px) {
+      main { padding: 1.5rem .9rem 2.5rem; }
+      .panels { grid-template-columns: 1fr; }
+      section { padding: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>SpeechRoster</h1>
+        <p>声纹名册与发言记录</p>
+      </div>
+      <span class="local" id="ready" hidden>本机运行</span>
+    </header>
+
+    <div class="panels">
+      <section aria-labelledby="enroll-heading">
+        <h2 id="enroll-heading">登记声纹</h2>
+        <form id="enroll" action="/api/enroll" method="post" enctype="multipart/form-data">
+          <p class="hint" id="voice-hint">每位说话人可以选多段单人录音，每段 2–60 秒。</p>
+          <div id="voice-groups"></div>
+          <div class="enroll-actions">
+            <button class="secondary" type="button" id="add-speaker">添加说话人</button>
+            <button type="submit">登记全部声纹</button>
+          </div>
+          <p class="status" role="status"></p>
+        </form>
+        <template id="voice-group">
+          <fieldset>
+            <legend>说话人</legend>
+            <label>说话人姓名 <input name="name" type="text" required autocomplete="off"></label>
+            <label>单人录音
+              <input name="audio" type="file" accept="audio/*,.m4a" multiple required aria-describedby="voice-hint">
+            </label>
+            <button class="secondary remove-group" type="button">移除此人</button>
+          </fieldset>
+        </template>
+        <ul class="roster" id="roster" aria-label="已登记的说话人"></ul>
+      </section>
+
+      <section aria-labelledby="transcribe-heading">
+        <h2 id="transcribe-heading">转写录音</h2>
+        <form id="transcribe" action="/api/transcribe" method="post" enctype="multipart/form-data">
+          <label>会议或访谈录音
+            <input name="audio" type="file" accept="audio/*,.m4a" required aria-describedby="meeting-hint">
+          </label>
+          <p class="hint" id="meeting-hint">转写后会匹配名册中的声纹，身份不确定时保留说话人编号。</p>
+          <button type="submit">转写并匹配声纹</button>
+          <p class="status" role="status"></p>
+        </form>
+      </section>
+    </div>
+
+    <section class="results" aria-labelledby="results-heading">
+      <div class="results-header">
+        <h2 id="results-heading">发言记录</h2>
+        <label id="recording-picker" hidden>录音 <select id="recordings"></select></label>
+        <a class="download" id="srt" hidden>下载 SRT</a>
+      </div>
+      <p class="empty" id="results-status" role="status">上传录音后，转写结果会显示在这里。</p>
+      <p class="status" id="limited" role="status" hidden>已达到输出上限，录音末尾的内容可能缺失。</p>
+      <ol class="transcript" id="segments"></ol>
+    </section>
+  </main>
+
+  <script>
+    const ready = document.querySelector('#ready');
+    const roster = document.querySelector('#roster');
+    const recordings = document.querySelector('#recordings');
+    const picker = document.querySelector('#recording-picker');
+    const segments = document.querySelector('#segments');
+    const resultsStatus = document.querySelector('#results-status');
+    const limited = document.querySelector('#limited');
+    const download = document.querySelector('#srt');
+    const groups = document.querySelector('#voice-groups');
+    const groupTemplate = document.querySelector('#voice-group');
+    const addSpeaker = document.querySelector('#add-speaker');
+    let current = null;
+
+    function updateGroupLabels() {
+      [...groups.children].forEach((group, index) => {
+        group.querySelector('legend').textContent = '说话人 ' + (index + 1);
+        group.querySelector('button').hidden = groups.children.length === 1;
+      });
+    }
+
+    function addVoiceGroup(focus = false) {
+      const group = groupTemplate.content.firstElementChild.cloneNode(true);
+      group.querySelector('button').addEventListener('click', () => {
+        group.remove();
+        updateGroupLabels();
+        addSpeaker.focus();
+      });
+      groups.append(group);
+      updateGroupLabels();
+      if (focus) group.querySelector('input[name=name]').focus();
+    }
+
+    addVoiceGroup();
+    addSpeaker.addEventListener('click', () => addVoiceGroup(true));
+
+    async function api(url, options) {
+      const response = await fetch(url, options);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const detail = Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail;
+        throw new Error(detail || '请求失败，请查看本机服务状态。');
+      }
+      return data;
+    }
+
+    async function refreshState() {
+      const data = await api('/api/state');
+      ready.hidden = false;
+      roster.replaceChildren(...data.profiles.map(({name, clips}) => {
+        const item = document.createElement('li');
+        item.textContent = name + ' · ' + clips + ' 段';
+        return item;
+      }));
+      recordings.replaceChildren(...data.recordings.map(({filename, id}) =>
+        new Option(filename + ' · ' + id.slice(0, 6), id)));
+      picker.hidden = data.recordings.length === 0;
+      if (current) recordings.value = current;
+      return data.recordings;
+    }
+
+    function clock(seconds) {
+      const total = Math.floor(seconds);
+      const hh = String(Math.floor(total / 3600)).padStart(2, '0');
+      const mm = String(Math.floor(total / 60) % 60).padStart(2, '0');
+      const ss = String(total % 60).padStart(2, '0');
+      return hh === '00' ? mm + ':' + ss : hh + ':' + mm + ':' + ss;
+    }
+
+    function showTranscript(recording) {
+      current = recording.id;
+      recordings.value = current;
+      download.href = '/api/recordings/' + encodeURIComponent(current) + '/srt';
+      download.hidden = recording.segments.length === 0;
+      limited.hidden = !recording.possibly_truncated;
+      resultsStatus.textContent = recording.segments.length
+        ? recording.segments.length + ' 段发言'
+        : '这份录音没有可显示的发言片段。';
+      segments.replaceChildren(...recording.segments.map(row => {
+        const item = document.createElement('li');
+        const meta = document.createElement('div');
+        const time = document.createElement('time');
+        const name = document.createElement('strong');
+        const words = document.createElement('p');
+        item.className = 'entry';
+        meta.className = 'entry-meta';
+        time.textContent = clock(row.start) + '–' + clock(row.end);
+        name.textContent = row.person || row.label;
+        words.textContent = row.text;
+        meta.append(time, name);
+        item.append(meta, words);
+        return item;
+      }));
+    }
+
+    async function openRecording(id) {
+      const recording = await api('/api/recordings/' + encodeURIComponent(id));
+      if (recordings.value === id) showTranscript(recording);
+    }
+
+    recordings.addEventListener('change', () => openRecording(recordings.value).catch(error => {
+      resultsStatus.textContent = error.message;
+    }));
+
+    function connectForm(id, pending, onSuccess) {
+      const form = document.getElementById(id);
+      const button = form.querySelector('button');
+      const status = form.querySelector('.status');
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (button.disabled) return;
+        const body = new FormData(form);
+        if (id === 'enroll') {
+          for (const input of form.querySelectorAll('input[type=file]')) {
+            body.append('clip_count', String(input.files.length));
+          }
+        }
+        const controls = [...form.querySelectorAll('input, button')];
+        controls.forEach(control => { control.disabled = true; });
+        status.dataset.error = 'false';
+        status.textContent = pending;
+        try {
+          const data = await api(form.action, {
+            method: 'POST', body, headers: {'X-SpeechRoster': '1'}
+          });
+          status.textContent = onSuccess(data);
+          form.reset();
+          if (id === 'enroll') {
+            groups.replaceChildren();
+            addVoiceGroup();
+          }
+          await refreshState();
+        } catch (error) {
+          status.dataset.error = 'true';
+          status.textContent = error.message;
+        } finally {
+          controls.forEach(control => { control.disabled = false; });
+        }
+      });
+    }
+
+    connectForm('enroll', '正在批量提取声纹…', data => {
+      const clips = data.people.reduce((total, person) => total + person.clips_processed, 0);
+      return '已处理 ' + data.people.length + ' 位说话人的 ' + clips + ' 段录音。';
+    });
+    connectForm('transcribe', '正在转写并匹配声纹，长录音可能需要几分钟…', data => {
+      showTranscript(data);
+      return '转写结果已保存。';
+    });
+
+    refreshState().then(items => {
+      if (items.length) return openRecording(items[0].id);
+    }).catch(error => { resultsStatus.textContent = error.message; });
+  </script>
+</body>
+</html>
